@@ -27,7 +27,7 @@
 [Как датасет превращается в аварии](docs/DATA_MAPPING.md)\
 [Читать документацию по API](docs/API.md)\
 [Методика и контроли](docs/METHOD_BUTTERFLY.md)\
-[Полный исследовательский EDA с выводами и графиками](docs/EDA_Ricochet.ipynb.md)\
+[Полный исследовательский EDA с выводами и графиками](docs/EDA_Ricochet.ipynb)\
 [Сценарии онлайн-тестирования API, ответы и замеры скорости](docs/API_TEST_SCENARIOS.md)\
 
 ## Структура проекта
