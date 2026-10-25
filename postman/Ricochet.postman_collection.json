@@ -1,0 +1,627 @@
+{
+  "info": {
+    "name": "Ricochet API · local",
+    "description": "Коллекция для локального API «Рикошета» (FastAPI, http://127.0.0.1:8077).\nЗапуск: .\\run_api.ps1 из корня проекта. Swagger: /docs, OpenAPI: /openapi.json.\nАвторизации нет. Все POST — raw JSON, Content-Type: application/json.\nПапка 01: сценарии precheck S1–S6. Папка 02: окна обслуживания S4. Папка 04: butterfly (готовый прогон и опциональный пересчёт).\nДля S5 сначала выполните S1: тело ответа сохраняется в переменную s1_body. Для S4c — сначала S4a.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "00 · Подключение",
+      "item": [
+        {
+          "name": "GET /health",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('status = ok', () => pm.expect(j.status).to.eql('ok'));",
+                  "pm.test('alarms loaded', () => pm.expect(j.alarms).to.be.above(0));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/health",
+            "description": "Проверка, что сервис поднят и данные загружены. Ожидается 4 731 050 аварий."
+          },
+          "response": []
+        }
+      ],
+      "description": ""
+    },
+    {
+      "name": "01 · Precheck (аварии)",
+      "item": [
+        {
+          "name": "S1 · известная platform-авария",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('risk MEDIUM', () => pm.expect(j.risk.level).to.eql('MEDIUM'));",
+                  "pm.test('top candidate = Oracle', () => pm.expect(j.root_cause_candidates[0].system).to.eql('db_oracle_11g'));",
+                  "pm.test('no maintenance', () => pm.expect(j.maintenance.hit).to.eql(false));",
+                  "pm.test('enrichment >= 0.8', () => pm.expect(j.enrichment.completeness).to.be.at.least(0.8));",
+                  "pm.collectionVariables.set('s1_body', pm.response.text());"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/precheck/alarm",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ts\": \"2020-04-24T10:15:00\",\n  \"integration\": \"platform\",\n  \"system\": \"os_linux\",\n  \"alert_group\": \"Sent_packets_high\",\n  \"node\": \"os_linux_01\",\n  \"region\": \"MSK\",\n  \"severity\": 4\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Авария-ведомый (os_linux / Sent_packets_high). Ожидается кандидат db_oracle_11g / AIOS_high, risk 40/MEDIUM."
+          },
+          "response": []
+        },
+        {
+          "name": "S2 · инцидент 10 узлов / 3 региона",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('risk HIGH', () => pm.expect(j.risk.level).to.eql('HIGH'));",
+                  "pm.test('blast nodes = 10', () => pm.expect(j.blast.nodes).to.eql(10));",
+                  "pm.test('blast regions = 3', () => pm.expect(j.blast.regions).to.eql(3));",
+                  "pm.test('BLAST_RADIUS flag', () => pm.expect(j.risk.flags.map(f => f.code)).to.include('BLAST_RADIUS'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/precheck/incident",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"incident_id\": \"BLAST-10\",\n  \"region\": \"MSK\",\n  \"alarms\": [\n    {\n      \"ts\": \"2020-04-24T10:00:00\",\n      \"integration\": \"platform\",\n      \"system\": \"os_linux\",\n      \"alert_group\": \"Sent_packets_high\",\n      \"node\": \"os_linux_00\",\n      \"region\": \"MSK\",\n      \"severity\": 4\n    },\n    {\n      \"ts\": \"2020-04-24T10:00:00\",\n      \"integration\": \"platform\",\n      \"system\": \"os_linux\",\n      \"alert_group\": \"Sent_packets_high\",\n      \"node\": \"os_linux_01\",\n      \"region\": \"SPB\",\n      \"severity\": 4\n    },\n    {\n      \"ts\": \"2020-04-24T10:00:00\",\n      \"integration\": \"platform\",\n      \"system\": \"os_linux\",\n      \"alert_group\": \"Sent_packets_high\",\n      \"node\": \"os_linux_02\",\n      \"region\": \"EKB\",\n      \"severity\": 4\n    },\n    {\n      \"ts\": \"2020-04-24T10:00:00\",\n      \"integration\": \"platform\",\n      \"system\": \"os_linux\",\n      \"alert_group\": \"Sent_packets_high\",\n      \"node\": \"os_linux_03\",\n      \"region\": \"MSK\",\n      \"severity\": 4\n    },\n    {\n      \"ts\": \"2020-04-24T10:00:00\",\n      \"integration\": \"platform\",\n      \"system\": \"os_linux\",\n      \"alert_group\": \"Sent_packets_high\",\n      \"node\": \"os_linux_04\",\n      \"region\": \"SPB\",\n      \"severity\": 4\n    },\n    {\n      \"ts\": \"2020-04-24T10:00:00\",\n      \"integration\": \"platform\",\n      \"system\": \"os_linux\",\n      \"alert_group\": \"Sent_packets_high\",\n      \"node\": \"os_linux_05\",\n      \"region\": \"EKB\",\n      \"severity\": 4\n    },\n    {\n      \"ts\": \"2020-04-24T10:00:00\",\n      \"integration\": \"platform\",\n      \"system\": \"os_linux\",\n      \"alert_group\": \"Sent_packets_high\",\n      \"node\": \"os_linux_06\",\n      \"region\": \"MSK\",\n      \"severity\": 4\n    },\n    {\n      \"ts\": \"2020-04-24T10:00:00\",\n      \"integration\": \"platform\",\n      \"system\": \"os_linux\",\n      \"alert_group\": \"Sent_packets_high\",\n      \"node\": \"os_linux_07\",\n      \"region\": \"SPB\",\n      \"severity\": 4\n    },\n    {\n      \"ts\": \"2020-04-24T10:00:00\",\n      \"integration\": \"platform\",\n      \"system\": \"os_linux\",\n      \"alert_group\": \"Sent_packets_high\",\n      \"node\": \"os_linux_08\",\n      \"region\": \"EKB\",\n      \"severity\": 4\n    },\n    {\n      \"ts\": \"2020-04-24T10:00:00\",\n      \"integration\": \"platform\",\n      \"system\": \"os_linux\",\n      \"alert_group\": \"Sent_packets_high\",\n      \"node\": \"os_linux_09\",\n      \"region\": \"MSK\",\n      \"severity\": 4\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "10 алертов, 10 узлов, 3 региона. Ожидается risk 60/HIGH и флаг BLAST_RADIUS."
+          },
+          "response": []
+        },
+        {
+          "name": "S3 · business-авария без кандидатов",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('no candidates', () => pm.expect(j.root_cause_candidates).to.have.length(0));",
+                  "pm.test('full enrichment', () => pm.expect(j.enrichment.completeness).to.eql(1));",
+                  "pm.test('risk LOW', () => pm.expect(j.risk.level).to.eql('LOW'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/precheck/alarm",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ts\": \"2020-04-24T10:20:00\",\n  \"integration\": \"business\",\n  \"system\": \"esb\",\n  \"alert_group\": \"CSF_fail\",\n  \"node\": \"esb_01\",\n  \"node_alias\": \"esb-alias\",\n  \"region\": \"SPB\",\n  \"severity\": 3\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "business/esb/CSF_fail вне платформенного графа. Ожидается 0 кандидатов, enrichment 1.0, risk LOW."
+          },
+          "response": []
+        },
+        {
+          "name": "S5 · повтор S1 (идемпотентность)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const prev = pm.collectionVariables.get('s1_body');",
+                  "pm.test('same response as S1', () => { pm.expect(prev).to.be.a('string'); pm.expect(pm.response.text()).to.eql(prev); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/precheck/alarm",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ts\": \"2020-04-24T10:15:00\",\n  \"integration\": \"platform\",\n  \"system\": \"os_linux\",\n  \"alert_group\": \"Sent_packets_high\",\n  \"node\": \"os_linux_01\",\n  \"region\": \"MSK\",\n  \"severity\": 4\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Отправьте после S1. Ответ должен совпасть байт-в-байт: повтор не создаёт побочных эффектов."
+          },
+          "response": []
+        },
+        {
+          "name": "S6 · невалидное тело (422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('422', () => pm.response.to.have.status(422));",
+                  "const j = pm.response.json();",
+                  "pm.test('missing field', () => pm.expect(j.detail[0].type).to.eql('missing'));",
+                  "pm.test('ts is required', () => pm.expect(j.detail[0].loc).to.include('ts'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/precheck/alarm",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"integration\": \"platform\",\n  \"system\": \"os_linux\",\n  \"alert_group\": \"X\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Нет обязательного поля ts. Ожидается 422 от Pydantic/FastAPI."
+          },
+          "response": []
+        }
+      ],
+      "description": ""
+    },
+    {
+      "name": "02 · Окна обслуживания",
+      "item": [
+        {
+          "name": "S4a · создать окно",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('window id returned', () => { pm.expect(j.id).to.be.a('string'); pm.collectionVariables.set('windowId', j.id); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/maintenance/windows",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"start\": \"2020-04-24T09:00:00\",\n  \"end\": \"2020-04-24T11:00:00\",\n  \"region\": \"MSK\",\n  \"system\": \"os_linux\",\n  \"node\": \"os_linux_05\",\n  \"note\": \"api test scenario\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Создаёт окно 09:00–11:00 MSK для os_linux/os_linux_05. id сохраняется в переменную windowId."
+          },
+          "response": []
+        },
+        {
+          "name": "S4b · авария внутри окна",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('maintenance hit', () => pm.expect(j.maintenance.hit).to.eql(true));",
+                  "pm.test('risk 70 / HIGH', () => { pm.expect(j.risk.score).to.eql(70); pm.expect(j.risk.level).to.eql('HIGH'); });",
+                  "pm.test('MAINTENANCE_OVERLAP', () => pm.expect(j.risk.flags.map(f => f.code)).to.include('MAINTENANCE_OVERLAP'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/precheck/alarm",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ts\": \"2020-04-24T10:15:00\",\n  \"integration\": \"platform\",\n  \"system\": \"os_linux\",\n  \"alert_group\": \"Sent_packets_high\",\n  \"node\": \"os_linux_05\",\n  \"region\": \"MSK\",\n  \"severity\": 4\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Авария ts=10:15, node=os_linux_05 попадает в окно. Ожидается maintenance.hit=true и risk 70/HIGH."
+          },
+          "response": []
+        },
+        {
+          "name": "S4c · удалить окно",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('ok=true', () => pm.expect(pm.response.json().ok).to.eql(true));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/maintenance/windows/{{windowId}}",
+            "description": "Удаляет окно, созданное в S4a. Выполняйте после S4b, чтобы не оставлять состояние."
+          },
+          "response": []
+        },
+        {
+          "name": "GET список окон",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('windows array', () => pm.expect(pm.response.json().windows).to.be.an('array'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/maintenance/windows"
+          },
+          "response": []
+        }
+      ],
+      "description": ""
+    },
+    {
+      "name": "03 · Runbooks",
+      "item": [
+        {
+          "name": "GET список runbook",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('runbooks array', () => pm.expect(pm.response.json().runbooks).to.be.an('array'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/precheck/runbooks"
+          },
+          "response": []
+        },
+        {
+          "name": "POST добавить runbook (опционально)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('ok=true', () => pm.expect(pm.response.json().ok).to.eql(true));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/precheck/runbooks",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"rb-os-sent\",\n  \"system\": \"os_linux\",\n  \"alert_group\": \"Sent_packets_high\",\n  \"url\": \"http://runbooks.local/os-sent\",\n  \"steps\": [\n    \"check interface counters\",\n    \"verify packet loss\",\n    \"inspect uplink\"\n  ],\n  \"owner\": \"netops\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Добавляет runbook для os_linux/Sent_packets_high. Если выполнить до S1, в ответе появится runbook. Состояние сохраняется в state/runbooks.json."
+          },
+          "response": []
+        }
+      ],
+      "description": ""
+    },
+    {
+      "name": "04 · Butterfly",
+      "item": [
+        {
+          "name": "GET пары (готовый прогон)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('258 pairs total', () => pm.expect(j.total).to.eql(258));",
+                  "pm.test('candidate returned', () => pm.expect(j.pairs[0].class).to.eql('BUTTERFLY_CANDIDATE'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/butterfly/pairs?cls=BUTTERFLY_CANDIDATE&min_score=0.5&limit=3",
+            "description": "Читает последний прогон из state/butterfly_last.json. Не запускает пересчёт. Ожидается 258 пар."
+          },
+          "response": []
+        },
+        {
+          "name": "GET граф",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('50 nodes', () => pm.expect(j.nodes).to.have.length(50));",
+                  "pm.test('258 edges', () => pm.expect(j.edges).to.have.length(258));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/butterfly/graph",
+            "description": "Граф последнего прогона: 50 узлов, 258 рёбер."
+          },
+          "response": []
+        },
+        {
+          "name": "POST проверить пару",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('NO_OVERLAP', () => pm.expect(j.overlap.verdict).to.eql('NO_OVERLAP'));",
+                  "pm.test('NO_COMMON_DEVICES', () => pm.expect(j.shared_unshared.verdict).to.eql('NO_COMMON_DEVICES'));",
+                  "pm.test('common = 0', () => pm.expect(j.overlap.common).to.eql(0));",
+                  "pm.test('corr_unshared ~ 0.8393', () => pm.expect(Math.abs(j.shared_unshared.corr_unshared - 0.8393)).to.be.below(0.01));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/butterfly/verify",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"key_a\": {\n    \"integration\": \"platform\",\n    \"system\": \"db_oracle_11g\",\n    \"alert_group\": \"AIOS_high\"\n  },\n  \"key_b\": {\n    \"integration\": \"platform\",\n    \"system\": \"os_linux\",\n    \"alert_group\": \"Sent_packets_high\"\n  },\n  \"lag_bins\": 3\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Проверка пары db_oracle_11g/AIOS_high ↔ os_linux/Sent_packets_high при lag_bins=3 (15 мин)."
+          },
+          "response": []
+        },
+        {
+          "name": "POST запустить анализ (фон, ~2.5 мин)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('job_id returned', () => { pm.expect(j.job_id).to.be.a('string'); pm.collectionVariables.set('jobId', j.job_id); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/butterfly/run",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"min_abs_corr\": 0.35,\n  \"min_devices\": 5,\n  \"lags\": 12,\n  \"holdout_last\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Запускает пересчёт в фоне и сразу возвращает job_id. Сам расчёт на полных данных занимает около 2,5 минут. Опрос — в следующем запросе."
+          },
+          "response": []
+        },
+        {
+          "name": "GET статус job",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('valid status', () => pm.expect(['running','done','error']).to.include(j.status));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/butterfly/jobs/{{jobId}}",
+            "description": "Повторяйте, пока status не станет done. Если 404 — job потерян после рестарта; запустите анализ заново."
+          },
+          "response": []
+        }
+      ],
+      "description": ""
+    },
+    {
+      "name": "05 · Ошибки и негативные проверки",
+      "item": [
+        {
+          "name": "S7 · неизвестный job (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('404', () => pm.response.to.have.status(404));",
+                  "pm.test('detail says not found', () => pm.expect(pm.response.json().detail).to.include('not found'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/butterfly/jobs/does-not-exist"
+          },
+          "response": []
+        }
+      ],
+      "description": ""
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://127.0.0.1:8077"
+    },
+    {
+      "key": "jobId",
+      "value": ""
+    },
+    {
+      "key": "windowId",
+      "value": ""
+    },
+    {
+      "key": "s1_body",
+      "value": ""
+    }
+  ]
+}

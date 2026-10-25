@@ -1,0 +1,367 @@
+{
+  "meta": {
+    "base_url": "http://127.0.0.1:8077",
+    "generated_at": "2026-10-23T23:46:20",
+    "method": "http.client keep-alive; warm-up excluded; one local uvicorn worker"
+  },
+  "health": {
+    "status_code": 200,
+    "status": "ok",
+    "alarms": 4731050,
+    "synthetic": false,
+    "months": [
+      "2020-04",
+      "2020-05"
+    ],
+    "pairs_last": 258,
+    "maintenance_windows": 0,
+    "historical_incidents": 81
+  },
+  "scenarios": {
+    "S1_known_platform_alarm": {
+      "request": {
+        "ts": "2020-04-24T10:15:00",
+        "integration": "platform",
+        "system": "os_linux",
+        "alert_group": "Sent_packets_high",
+        "node": "os_linux_01",
+        "region": "MSK",
+        "severity": 4
+      },
+      "status_code": 200,
+      "latency_ms": 31.59,
+      "response": {
+        "incident_id": "ad-hoc",
+        "alarms_total": 1,
+        "alarms_outside_maintenance": 1,
+        "maintenance_hit": false,
+        "enrichment": 0.8333,
+        "runbook": null,
+        "blast": {
+          "nodes": 1,
+          "regions": 1,
+          "max_severity": 4
+        },
+        "risk": {
+          "score": 40,
+          "level": "MEDIUM",
+          "flags": [
+            {
+              "code": "BUTTERFLY_LINKED",
+              "weight": 25,
+              "detail": "5 hidden-dependency candidate(s)"
+            },
+            {
+              "code": "HIGH_SEVERITY",
+              "weight": 15,
+              "detail": "max severity 4"
+            }
+          ]
+        },
+        "candidates": 5,
+        "top_candidates": [
+          {
+            "system": "db_oracle_11g",
+            "alert_group": "AIOS_high",
+            "score": 0.7058,
+            "predicts_downstream": "Sent_packets_high"
+          },
+          {
+            "system": "db_oracle_11g",
+            "alert_group": "Login_Per_Sec_low",
+            "score": 0.3917,
+            "predicts_downstream": "Sent_packets_high"
+          },
+          {
+            "system": "db_oracle_11g",
+            "alert_group": "Physical_Read_Per_Sec_high",
+            "score": 0.3832,
+            "predicts_downstream": "Sent_packets_high"
+          }
+        ],
+        "similar": 0
+      }
+    },
+    "S2_blast_radius": {
+      "request_alarms": 10,
+      "status_code": 200,
+      "latency_ms": 45.36,
+      "response": {
+        "incident_id": "BLAST-10",
+        "alarms_total": 10,
+        "alarms_outside_maintenance": 10,
+        "maintenance_hit": false,
+        "enrichment": 0.8333,
+        "runbook": null,
+        "blast": {
+          "nodes": 10,
+          "regions": 3,
+          "max_severity": 4
+        },
+        "risk": {
+          "score": 60,
+          "level": "HIGH",
+          "flags": [
+            {
+              "code": "BUTTERFLY_LINKED",
+              "weight": 25,
+              "detail": "5 hidden-dependency candidate(s)"
+            },
+            {
+              "code": "BLAST_RADIUS",
+              "weight": 20,
+              "detail": "10 nodes, 3 regions"
+            },
+            {
+              "code": "HIGH_SEVERITY",
+              "weight": 15,
+              "detail": "max severity 4"
+            }
+          ]
+        },
+        "candidates": 5,
+        "top_candidates": [
+          {
+            "system": "db_oracle_11g",
+            "alert_group": "AIOS_high",
+            "score": 0.7058,
+            "predicts_downstream": "Sent_packets_high"
+          },
+          {
+            "system": "db_oracle_11g",
+            "alert_group": "Login_Per_Sec_low",
+            "score": 0.3917,
+            "predicts_downstream": "Sent_packets_high"
+          },
+          {
+            "system": "db_oracle_11g",
+            "alert_group": "Physical_Read_Per_Sec_high",
+            "score": 0.3832,
+            "predicts_downstream": "Sent_packets_high"
+          }
+        ],
+        "similar": 0
+      }
+    },
+    "S3_unknown_business_alarm": {
+      "request": {
+        "ts": "2020-04-24T10:20:00",
+        "integration": "business",
+        "system": "esb",
+        "alert_group": "CSF_fail",
+        "node": "esb_01",
+        "node_alias": "esb-alias",
+        "region": "SPB",
+        "severity": 3
+      },
+      "status_code": 200,
+      "latency_ms": 45.52,
+      "response": {
+        "incident_id": "ad-hoc",
+        "alarms_total": 1,
+        "alarms_outside_maintenance": 1,
+        "maintenance_hit": false,
+        "enrichment": 1.0,
+        "runbook": null,
+        "blast": {
+          "nodes": 1,
+          "regions": 1,
+          "max_severity": 3
+        },
+        "risk": {
+          "score": 0,
+          "level": "LOW",
+          "flags": []
+        },
+        "candidates": 0,
+        "top_candidates": [],
+        "similar": 0
+      }
+    },
+    "S4_maintenance_overlap": {
+      "window_id": "73e1d9085d83",
+      "status_code": 200,
+      "latency_ms": 30.77,
+      "response": {
+        "incident_id": "ad-hoc",
+        "alarms_total": 1,
+        "alarms_outside_maintenance": 0,
+        "maintenance_hit": true,
+        "enrichment": 0.8333,
+        "runbook": null,
+        "blast": {
+          "nodes": 1,
+          "regions": 1,
+          "max_severity": 4
+        },
+        "risk": {
+          "score": 70,
+          "level": "HIGH",
+          "flags": [
+            {
+              "code": "MAINTENANCE_OVERLAP",
+              "weight": 30,
+              "detail": "1 alarms inside 1 window(s)"
+            },
+            {
+              "code": "BUTTERFLY_LINKED",
+              "weight": 25,
+              "detail": "5 hidden-dependency candidate(s)"
+            },
+            {
+              "code": "HIGH_SEVERITY",
+              "weight": 15,
+              "detail": "max severity 4"
+            }
+          ]
+        },
+        "candidates": 5,
+        "top_candidates": [
+          {
+            "system": "db_oracle_11g",
+            "alert_group": "AIOS_high",
+            "score": 0.7058,
+            "predicts_downstream": "Sent_packets_high"
+          },
+          {
+            "system": "db_oracle_11g",
+            "alert_group": "Login_Per_Sec_low",
+            "score": 0.3917,
+            "predicts_downstream": "Sent_packets_high"
+          },
+          {
+            "system": "db_oracle_11g",
+            "alert_group": "Physical_Read_Per_Sec_high",
+            "score": 0.3832,
+            "predicts_downstream": "Sent_packets_high"
+          }
+        ],
+        "similar": 0
+      }
+    },
+    "S5_replay": {
+      "identical": true,
+      "risk_score": 40
+    },
+    "S6_validation_error": {
+      "status_code": 422,
+      "detail_type": "missing"
+    },
+    "S7_not_found": {
+      "status_code": 404,
+      "detail": "job does-not-exist not found"
+    },
+    "S8_graph_and_verify": {
+      "pairs_total": 258,
+      "pair": {
+        "key_a": [
+          "platform",
+          "db_oracle_11g",
+          "AIOS_high"
+        ],
+        "key_b": [
+          "platform",
+          "os_linux",
+          "Sent_packets_high"
+        ],
+        "class": "BUTTERFLY_CANDIDATE"
+      },
+      "verify_overlap": {
+        "devices_a": 11,
+        "devices_b": 13,
+        "common": 0,
+        "shared_a": 0,
+        "shared_b": 0,
+        "unshared_a": 11,
+        "unshared_b": 13,
+        "overlap_frac": 0.0,
+        "verdict": "NO_OVERLAP"
+      },
+      "verify_shared_unshared": {
+        "corr_all": 0.8393,
+        "corr_shared": null,
+        "corr_unshared": 0.8393,
+        "verdict": "NO_COMMON_DEVICES"
+      },
+      "graph_nodes": 50,
+      "graph_edges": 258
+    }
+  },
+  "benchmark": {
+    "sequential_100": {
+      "n": 100,
+      "mean_ms": 10.7,
+      "median_ms": 10.08,
+      "p95_ms": 15.02,
+      "p99_ms": 16.13,
+      "min_ms": 6.62,
+      "max_ms": 48.04,
+      "rps": 93.2,
+      "wall_seconds": 1.072
+    },
+    "concurrent_8x100": {
+      "n": 100,
+      "mean_ms": 62.54,
+      "median_ms": 59.5,
+      "p95_ms": 96.3,
+      "p99_ms": 103.15,
+      "min_ms": 26.61,
+      "max_ms": 103.25,
+      "rps": 122.5,
+      "wall_seconds": 0.816
+    },
+    "cold_connection_100": {
+      "n": 100,
+      "mean_ms": 38.71,
+      "median_ms": 32.4,
+      "p95_ms": 47.63,
+      "p99_ms": 48.02,
+      "min_ms": 24.33,
+      "max_ms": 48.37,
+      "rps": 25.8,
+      "wall_seconds": 3.879
+    },
+    "payload_scaling": [
+      {
+        "alarms_per_request": 1,
+        "n": 10,
+        "mean_ms": 7.05,
+        "median_ms": 7.08,
+        "p95_ms": 7.67,
+        "p99_ms": 7.75,
+        "min_ms": 6.35,
+        "max_ms": 7.77
+      },
+      {
+        "alarms_per_request": 10,
+        "n": 10,
+        "mean_ms": 7.63,
+        "median_ms": 7.57,
+        "p95_ms": 8.05,
+        "p99_ms": 8.23,
+        "min_ms": 7.28,
+        "max_ms": 8.28
+      },
+      {
+        "alarms_per_request": 50,
+        "n": 10,
+        "mean_ms": 9.44,
+        "median_ms": 8.36,
+        "p95_ms": 13.08,
+        "p99_ms": 13.22,
+        "min_ms": 7.72,
+        "max_ms": 13.26
+      },
+      {
+        "alarms_per_request": 100,
+        "n": 10,
+        "mean_ms": 13.11,
+        "median_ms": 9.95,
+        "p95_ms": 27.6,
+        "p99_ms": 37.61,
+        "min_ms": 8.34,
+        "max_ms": 40.12
+      }
+    ]
+  }
+}
