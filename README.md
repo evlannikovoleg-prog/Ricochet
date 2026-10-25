@@ -1,4 +1,4 @@
-# Ricochet
+![Р](docs/images/R.png)![И](docs/images/I.png)![К](docs/images/K.png)![О](docs/images/O.png)![Ш](docs/images/SH.png)![Е](docs/images/E.png)![Т](docs/images/T.png)
 
 Сервис «Рикошет» развивает два направления: поиск скрытых зависимостей аварий
 и предпроверку инцидентов. Данные — публичный датасет [AIOps Challenge 2020](https://github.com/NetManAIOps/AIOps-Challenge-2020-Data)
