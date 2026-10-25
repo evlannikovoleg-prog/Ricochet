@@ -22,34 +22,15 @@
    обслуживания, предлагаемый runbook и риск-флаги. Точка подключения — хук в
    тикетинг-политике или сервис, слушающий новые инциденты.
 
-## Быстрый старт
+## Документация
+[Читать документацию по API](docs/API.md)\
+[Как датасет превращается в аварии](docs/DATA_MAPPING.md)\
+[Читать документацию по API](docs/API.md)\
+[Методика и контроли](docs/METHOD_BUTTERFLY.md)\
+[Полный исследовательский EDA с выводами и графиками](docs/EDA_Ricochet.ipynb.md)\
+[Сценарии онлайн-тестирования API, ответы и замеры скорости](docs/API_TEST_SCENARIOS.md)\
 
-```powershell
-# зависимости
-pip install -r requirements.txt
-
-# (вариант А) синтетический поток с посаженными паттернами — для демо и тестов
-python scripts\make_synthetic_data.py
-
-# (вариант Б) реальный датасет AIOps Challenge 2020
-# 1) скачать AIOps挑战赛2020预赛数据.zip -> data\raw\aiops2020.zip
-#    (Google Drive / Tsinghua Cloud, md5 fac7fe1b4e048c81ef88874334b73534)
-# 2) распаковка с переименованием в английские пути:
-python scripts\ingest_aiops2020.py --mode extract
-# 3) конвертация метрик/трейсов в аварии канонической схемы:
-python scripts\ingest_aiops2020.py --mode ingest
-
-# тесты
-python -m pytest tests -q
-
-# запуск API
-.\run_api.ps1   # uvicorn, http://127.0.0.1:8077
-```
-
-Если `data\processed\alarms.parquet` отсутствует, API при старте генерирует
-синтетический поток (45 дней) — сервис поднимается без датасета.
-
-## Структура
+## Структура проекта
 
 ```
 src/ricochet/
@@ -77,10 +58,31 @@ tests/               pytest: движок, предпроверка, API
 | `region` | `Tp1SuperRegion` | в датасете нет → `""` |
 | `severity` | `OriginalSeverity` | 3–4 |
 
-## Документация
 
-- `docs/API.md` — эндпоинты и примеры вызовов
-- `docs/DATA_MAPPING.md` — как датасет превращается в аварии
-- `docs/METHOD_BUTTERFLY.md` — методика и контроли (порт «Рикошета»)
-- `docs/EDA_Ricochet.ipynb` — полный исследовательский EDA с выводами и графиками
-- `docs/API_TEST_SCENARIOS.md` — сценарии онлайн-тестирования API, ответы и замеры скорости
+## Быстрый старт
+
+```powershell
+# зависимости
+pip install -r requirements.txt
+
+# (вариант А) синтетический поток с посаженными паттернами — для демо и тестов
+python scripts\make_synthetic_data.py
+
+# (вариант Б) реальный датасет AIOps Challenge 2020
+# 1) скачать AIOps挑战赛2020预赛数据.zip -> data\raw\aiops2020.zip
+#    (Google Drive / Tsinghua Cloud, md5 fac7fe1b4e048c81ef88874334b73534)
+# 2) распаковка с переименованием в английские пути:
+python scripts\ingest_aiops2020.py --mode extract
+# 3) конвертация метрик/трейсов в аварии канонической схемы:
+python scripts\ingest_aiops2020.py --mode ingest
+
+# тесты
+python -m pytest tests -q
+
+# запуск API
+.\run_api.ps1   # uvicorn, http://127.0.0.1:8077
+```
+
+Если `data\processed\alarms.parquet` отсутствует, API при старте генерирует
+синтетический поток (45 дней) — сервис поднимается без датасета.
+
