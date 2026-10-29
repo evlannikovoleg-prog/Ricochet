@@ -1,7 +1,7 @@
 # API «Рикошета»
 
 База: `http://127.0.0.1:8077`. Все рабочие маршруты — под `/api/v1`.
-Архитектура и ограничения сервиса — в `docs/EDA_Ricochet.ipynb`, раздел 12.
+Архитектура и ограничения сервиса — в `docs/EDA_Ricochet.ipynb`, разделы 12–13.
 Сценарии онлайн-тестирования и замеры скорости — в `docs/API_TEST_SCENARIOS.md`.
 
 ## /health
@@ -9,7 +9,8 @@
 ```powershell
 curl.exe http://127.0.0.1:8077/health
 # {"status":"ok","alarms":4731050,"synthetic":false,"months":["2020-04","2020-05"],
-#  "pairs_last":258,"maintenance_windows":0,"historical_incidents":81}
+#  "pairs_last":258,"maintenance_windows":0,"historical_incidents":81,
+#  "ranker":{"model_kind":"heuristic","model_version":"heuristic-v1","feedback":0}}
 ```
 
 ## Направление 1: «бабочка»
@@ -42,11 +43,31 @@ curl.exe http://127.0.0.1:8077/health
 
 ### GET /api/v1/butterfly/pairs
 
-Список пар последнего прогона. Фильтры: `cls` (`BUTTERFLY_CANDIDATE` / `DUPLICATE` /
-`AMBIGUOUS`), `min_corr`, `min_score`, `limit`. Пара содержит: `corr`, `corr0`, `lead`,
-`lag_min`, `support`, `days_ok/days_total`, `regions_ok`, `devices_a/b`, `overlap`
-(пересечение устройств), `shared_unshared` (корреляция на общих/несовпадающих
-устройствах), `class`, `score`, `month_stable`.
+Список пар последнего прогона, отсортированный XGBoost-ранжировщиком. Фильтры:
+`cls` (`BUTTERFLY_CANDIDATE` / `DUPLICATE` / `AMBIGUOUS`), `min_corr`, `min_score`,
+`min_probability` (например, `0.9`), `decision` (`pass` / `review` / `drop`),
+`limit`. Пара содержит: `corr`, `corr0`, `lead`, `lag_min`, `support`,
+`days_ok/days_total`, `regions_ok`, `devices_a/b`, `overlap` (пересечение
+устройств), `shared_unshared` (корреляция на общих/несовпадающих устройствах),
+`class`, `score`, `month_stable` и блок `xgboost`:
+
+```json
+"xgboost": {
+  "probability": 0.9731,
+  "confidence": 0.9731,
+  "decision": "pass",
+  "model_kind": "xgboost",
+  "model_version": "a1b2c3d4e5f6",
+  "threshold": 0.9,
+  "rank": 1,
+  "features": {"corr_abs": 0.91, "cooccurrence_lift_log": 1.2, "...": 0}
+}
+```
+
+`decision`: `pass` (≥0.9), `review` (≥0.5), `drop` (<0.5). Пока модель не
+обучена, `model_kind="heuristic"` — это прозрачный cold-start приоритет. После
+накопления обратной связи ранжировщик переключается на XGBoost. Подробности —
+`docs/RANKER.md`.
 
 ### GET /api/v1/butterfly/graph
 
@@ -96,7 +117,14 @@ curl.exe http://127.0.0.1:8077/health
 - `blast` — масштаб (узлы, регионы, максимальная критичность);
 - `risk` — `score` 0–100, `level` LOW/MEDIUM/HIGH, `flags`:
   `MAINTENANCE_OVERLAP`, `BUTTERFLY_LINKED`, `LOW_ENRICHMENT`, `BLAST_RADIUS`,
-  `HIGH_SEVERITY`, `REPEAT_OFFENDER`.
+  `HIGH_SEVERITY`, `REPEAT_OFFENDER`;
+- `ranker` — как отбирались кандидаты: порог, `top_k`, сколько пар прошло
+  порог, `fallback` (если ни одна пара не достигла 0.9), тип и версия модели.
+
+В `root_cause_candidates` добавлены `model_probability`, `model_kind` и
+`model_version`; сортировка идёт по вероятности модели, затем по `score`.
+В предпроверку передаются только топ-5 связей с `probability ≥ 0.9` (при
+пустом результате — явный fallback на лучшие по рангу).
 
 ### POST /api/v1/precheck/alarm
 
@@ -106,6 +134,49 @@ curl.exe http://127.0.0.1:8077/health
 
 Реестр runbook'ов: `{id, system, alert_group, url, steps[], owner}`.
 Матчинг: точный `(system, alert_group)` → по `system` → ничего.
+
+## XGBoost-ранжировщик
+
+### GET /api/v1/ranker/status
+
+Состояние модели и обратной связи: `model_kind` (`xgboost` / `heuristic`),
+`model_version`, `model_available`, пороги, `precheck_top_k`, число меток
+`good`/`spam`, метрики обучения, топ важности признаков и полный список
+`FEATURE_NAMES`.
+
+### POST /api/v1/ranker/feedback
+
+Метка эксперта для пары из последнего прогона:
+
+```json
+{
+  "pair_id": "ipcore|snmp|mplsTunnelRerouted<->ipcore|syslog|RPD-ISIS-ADJ",
+  "label": "good",
+  "source": "ui",
+  "comment": "подтверждено на разборе"
+}
+```
+
+`label`: `good` / `spam` (также принимаются `true/false`, `1/0`). Метка и
+снимок признаков сохраняются в `state/ranker_feedback.json`. После 20 меток
+(и минимум 2 каждого класса) модель обучается автоматически, далее — каждые
+10 новых меток.
+
+### POST /api/v1/ranker/train
+
+Ручное обучение:
+
+```json
+{"force": true}
+```
+
+`force=true` позволяет обучить модель даже на маленькой демонстрационной
+выборке (нужны оба класса). Без `force` действуют пороги
+`min_train_samples` / `min_per_class`.
+
+После обучения `POST /api/v1/precheck/incident` пересчитывает вероятности
+текущей моделью на лету. Список `/butterfly/pairs` обновится с новой версией
+модели после следующего `POST /api/v1/butterfly/run`.
 
 ## Окна обслуживания
 

@@ -27,7 +27,12 @@
   "months": ["2020-04", "2020-05"],
   "pairs_last": 258,
   "maintenance_windows": 0,
-  "historical_incidents": 81
+  "historical_incidents": 81,
+  "ranker": {
+    "model_kind": "heuristic",
+    "model_version": "heuristic-v1",
+    "feedback": 0
+  }
 }
 ```
 
@@ -205,6 +210,43 @@
 ```
 
 `GET /api/v1/butterfly/graph` вернул `50` узлов и `258` рёбер. Ожидаемо: в platform-слое `db_*` и `os_*` не пересекаются по `cmdb_id`, поэтому вердикт — `NO_COMMON_DEVICES`.
+
+Каждая пара в ответе `/butterfly/pairs` содержит блок `xgboost`:
+`probability`, `decision` (`pass`/`review`/`drop`), `rank`, `model_kind`,
+`model_version`, `threshold` и снимок 35 признаков. Пары отсортированы по
+вероятности ранжировщика, а не по `score` движка.
+
+### S9. Обратная связь и обучение XGBoost
+
+`GET /api/v1/ranker/status` до обучения возвращает `model_kind=heuristic`,
+`xgboost_installed=true`, `feedback.total=0`.
+
+Метка эксперта для пары:
+
+```json
+{
+  "pair_id": "platform|db_oracle_11g|AIOS_high<->platform|os_linux|Sent_packets_high",
+  "label": "good",
+  "source": "ui",
+  "comment": "подтверждено на разборе"
+}
+```
+
+`POST /api/v1/ranker/feedback` → `200`, метка и снимок признаков сохранены в
+`state/ranker_feedback.json`. Для демонстрации можно добавить одну метку
+`spam`, затем вызвать:
+
+```json
+POST /api/v1/ranker/train
+{"force": true}
+```
+
+Ответ содержит `result.trained=true`, `metrics` и `top_features`; повторный
+`GET /api/v1/ranker/status` показывает `model_kind=xgboost` и версию модели.
+После обучения `POST /api/v1/precheck/incident` пересчитывает вероятности
+текущей моделью и возвращает блок `ranker` с `threshold`, `selected`,
+`fallback`. При отсутствии пар выше `0.9` включается явный fallback, а не
+пустое дело.
 
 ## 4. Скорость на 100 вызовах
 

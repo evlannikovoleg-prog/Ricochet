@@ -11,6 +11,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from ricochet.canonical import read_alarms
 from ricochet.config import EngineConfig, PROJECT_ROOT
 from ricochet.leadlag import run_butterfly
+from ricochet.ranking import PairRanker, RankerConfig
 from ricochet.verdicts import finalize_pairs
 
 
@@ -41,13 +42,21 @@ def main() -> None:
     res = run_butterfly(alarms, cfg, holdout_last=args.holdout_last)
     print(json.dumps(res["info"], ensure_ascii=False))
     res["pairs"] = finalize_pairs(alarms, res["pairs"], cfg)
+    ranker = PairRanker(RankerConfig(state_dir=Path(args.out).parent))
+    res["pairs"], ranker_summary = ranker.score_pairs(res["pairs"], alarms=alarms, cfg=cfg)
+    res["ranker"] = ranker_summary
+    res["info"]["ranker"] = ranker_summary
+    print("ranker:", json.dumps({k: v for k, v in ranker_summary.items() if k != "features"},
+                                ensure_ascii=False))
 
     for p in res["pairs"][:args.top]:
-        print(f"{p['score']:.3f} {p['class']:<20} corr={p['corr']:+.3f} lead={p['lead']:+.3f} "
+        x = p["xgboost"]
+        print(f"{p['score']:.3f} rank={x['rank']:>3} p={x['probability']:.3f} "
+              f"{p['class']:<20} corr={p['corr']:+.3f} lead={p['lead']:+.3f} "
               f"lag={p['lag_min']:+3d}m days={p['days_ok']}/{p['days_total']} "
               f"regions={p['regions_ok']}/{p['regions_total']} dev={p['devices_a']}/{p['devices_b']} "
               f"[{p['key_a'][0]}|{p['key_a'][1]}|{p['key_a'][2][:36]}] "
-              "<->" 
+              "<-> "
               f" [{p['key_b'][0]}|{p['key_b'][1]}|{p['key_b'][2][:36]}]")
 
     out = Path(args.out)

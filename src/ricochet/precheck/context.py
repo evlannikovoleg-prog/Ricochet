@@ -29,6 +29,7 @@ def root_cause_candidates(alarm_keys: list[tuple], pairs: list[dict]) -> list[di
             continue
         lag = p.get("lag_bins", 0)
         leader, follower = (ka, kb) if lag >= 0 else (kb, ka)
+        model = p.get("xgboost") or {}
         out.append(dict(
             system=leader[1],
             integration=leader[0],
@@ -44,8 +45,11 @@ def root_cause_candidates(alarm_keys: list[tuple], pairs: list[dict]) -> list[di
             class_=p.get("class"),
             month_stable=p.get("month_stable"),
             score=p.get("score"),
+            model_probability=model.get("probability"),
+            model_kind=model.get("model_kind"),
+            model_version=model.get("model_version"),
         ))
-    out.sort(key=lambda c: -(c.get("score") or 0))
+    out.sort(key=lambda c: (-(c.get("model_probability") or 0.0), -(c.get("score") or 0)))
     seen, uniq = set(), []
     for c in out:
         k = (c["system"], c["alert_group"])

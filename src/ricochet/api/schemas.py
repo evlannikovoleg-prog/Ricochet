@@ -59,6 +59,17 @@ class VerifyPairIn(BaseModel):
     lag_bins: int = 0
 
 
+class FeedbackIn(BaseModel):
+    pair_id: str
+    label: str = Field(description="good / spam (also accepts true/false, 1/0)")
+    comment: str = ""
+    source: str = "ui"
+
+
+class RankerTrainIn(BaseModel):
+    force: bool = True
+
+
 class WindowIn(BaseModel):
     start: datetime
     end: datetime

@@ -38,15 +38,22 @@ async def job_status(job_id: str, request: Request):
 
 @router.get("/butterfly/pairs")
 async def list_pairs(request: Request, cls: str = "", min_corr: float = 0.0,
-                     min_score: float = 0.0, limit: int = 100):
+                     min_score: float = 0.0, min_probability: float = 0.0,
+                     decision: str = "", limit: int = 100):
     svc = _svc(request)
     if svc.butterfly_last is None:
         raise HTTPException(404, "no butterfly run yet: POST /api/v1/butterfly/run first")
     pairs = svc.butterfly_last.get("pairs", [])
+
+    def ranker_of(p: dict) -> dict:
+        return p.get("xgboost") or {}
+
     out = [p for p in pairs
            if (not cls or p.get("class") == cls)
            and abs(p.get("corr", 0)) >= min_corr
-           and (p.get("score") or 0) >= min_score]
+           and (p.get("score") or 0) >= min_score
+           and (ranker_of(p).get("probability") or 0) >= min_probability
+           and (not decision or ranker_of(p).get("decision") == decision)]
     return dict(total=len(pairs), filtered=len(out), pairs=out[:limit])
 
 

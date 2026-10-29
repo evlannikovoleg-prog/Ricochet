@@ -23,6 +23,13 @@ async def precheck_incident(body: IncidentIn, request: Request):
         alarms=[a.model_dump() for a in body.alarms],
     )
     pairs = svc.butterfly_last.get("pairs", []) if svc.butterfly_last else []
+    last_ranker = (svc.butterfly_last or {}).get("ranker") or {}
+    stale = (last_ranker.get("model_kind") != svc.ranker.model_kind
+             or last_ranker.get("model_version") != svc.ranker.model_version)
+    if pairs and (stale or any(not isinstance(p.get("xgboost"), dict) for p in pairs)):
+        pairs, _ = svc.ranker.score_pairs(
+            pairs, alarms=svc.alarms, cfg=svc.cfg.engine, include_features=False)
+    pairs, ranker_meta = svc.ranker.select_for_precheck(pairs)
     case = assemble_case(
         incident,
         alarms_history=svc.alarms,
@@ -31,6 +38,7 @@ async def precheck_incident(body: IncidentIn, request: Request):
         incidents=svc.incidents,
         runbooks=svc.runbooks,
     )
+    case["ranker"] = ranker_meta
     return case
 
 

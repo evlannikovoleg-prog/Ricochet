@@ -109,6 +109,34 @@ def test_maintenance_windows_crud(client):
     assert r.status_code == 200
 
 
+def test_ranker_feedback_and_training(client):
+    pytest.importorskip("xgboost")
+    r = client.get("/api/v1/ranker/status")
+    assert r.status_code == 200
+    assert r.json()["feature_count"] > 0
+
+    pairs = client.get("/api/v1/butterfly/pairs").json()["pairs"]
+    assert pairs
+    assert all("xgboost" in p for p in pairs)
+    good = next(p for p in pairs if p.get("class") == "BUTTERFLY_CANDIDATE")
+    spam = next(p for p in pairs if p.get("class") == "DUPLICATE")
+
+    for pair, label in ((good, "good"), (spam, "spam")):
+        r = client.post("/api/v1/ranker/feedback", json=dict(
+            pair_id=pair["id"], label=label, source="test"))
+        assert r.status_code == 200
+
+    r = client.post("/api/v1/ranker/train", json=dict(force=True))
+    assert r.status_code == 200
+    assert r.json()["result"]["trained"] is True
+    assert r.json()["status"]["model_kind"] == "xgboost"
+
+    r = client.post("/api/v1/precheck/incident", json=dict(
+        incident_id="INC-RANKER", region="MSK", alarms=[]))
+    assert r.status_code == 200
+    assert "ranker" in r.json()
+
+
 def test_verify_duplicate_pair(client):
     r = client.post("/api/v1/butterfly/verify", json=dict(
         key_a=dict(integration="nsp", system="nokia", alert_group="dryContactAlarm"),

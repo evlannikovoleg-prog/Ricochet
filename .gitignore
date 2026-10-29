@@ -8,6 +8,15 @@ __pycache__/
 .DS_Store
 .venv/
 venv/
+*.db
+*.sqlite
+*.sqlite3
+*.duckdb
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa*
 *.csv
 *.parquet
 *.zip

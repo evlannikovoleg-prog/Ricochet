@@ -15,6 +15,7 @@ from ..ingest.synthetic import generate_synthetic
 from ..maintenance import MaintenanceStore
 from ..precheck.similar import HistoricalIncidents
 from ..precheck.runbooks import RunbookRegistry
+from ..ranking import PairRanker
 
 
 class AppState:
@@ -61,6 +62,8 @@ class AppState:
                 owner="transport-team"))
             self.runbooks.save(cfg.state_dir / "runbooks.json")
         self.butterfly_last: dict | None = self._load_butterfly()
+        self.ranker = PairRanker(cfg.state_dir)
+        self._refresh_ranker_cache()
         self.executor = ThreadPoolExecutor(max_workers=2)
         self.jobs: dict[str, dict] = {}
         self._lock = threading.Lock()
@@ -75,6 +78,28 @@ class AppState:
         self.butterfly_last = result
         p = self.cfg.state_dir / "butterfly_last.json"
         p.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    def _refresh_ranker_cache(self) -> None:
+        """Attach the ranker to a graph produced by an older version of the service."""
+        if not self.butterfly_last:
+            return
+        pairs = self.butterfly_last.get("pairs") or []
+        if not pairs:
+            return
+        last = self.butterfly_last.get("ranker") or {}
+        stale = (last.get("model_kind") != self.ranker.model_kind
+                 or last.get("model_version") != self.ranker.model_version)
+        if not stale and all(isinstance(p.get("xgboost"), dict) for p in pairs):
+            return
+        try:
+            scored, summary = self.ranker.score_pairs(
+                pairs, alarms=self.alarms, cfg=self.cfg.engine)
+            self.butterfly_last["pairs"] = scored
+            self.butterfly_last["ranker"] = summary
+            self.save_butterfly(self.butterfly_last)
+        except Exception:
+            # A stale graph is still better than a failed API startup.
+            return
 
     def submit_job(self, fn, label: str) -> str:
         import uuid
@@ -117,15 +142,19 @@ def run_pipeline(state: AppState, params: dict) -> dict:
         kept = d
     result = run_butterfly(kept, cfg, holdout_last=holdout_last)
     result["pairs"] = finalize_pairs(kept, result["pairs"], cfg)
+    result["pairs"], ranker_summary = state.ranker.score_pairs(
+        result["pairs"], alarms=kept, cfg=cfg)
+    result["ranker"] = ranker_summary
+    result["info"]["ranker"] = ranker_summary
     state.save_butterfly(result)
-    return dict(info=result["info"], pairs=len(result["pairs"]))
+    return dict(info=result["info"], pairs=len(result["pairs"]), ranker=ranker_summary)
 
 
 def create_app(cfg: AppConfig | None = None) -> "object":
     from contextlib import asynccontextmanager
 
     from fastapi import FastAPI
-    from . import routes_butterfly, routes_precheck
+    from . import routes_butterfly, routes_precheck, routes_ranker
     config = cfg or AppConfig()
 
     @asynccontextmanager
@@ -138,6 +167,7 @@ def create_app(cfg: AppConfig | None = None) -> "object":
 
     app.include_router(routes_precheck.router, prefix="/api/v1")
     app.include_router(routes_butterfly.router, prefix="/api/v1")
+    app.include_router(routes_ranker.router, prefix="/api/v1")
 
     @app.get("/health")
     async def health():
@@ -151,6 +181,9 @@ def create_app(cfg: AppConfig | None = None) -> "object":
             pairs_last=None if svc.butterfly_last is None else len(svc.butterfly_last.get("pairs", [])),
             maintenance_windows=len(svc.maintenance.windows),
             historical_incidents=len(svc.incidents.incidents),
+            ranker=dict(model_kind=svc.ranker.model_kind,
+                        model_version=svc.ranker.model_version,
+                        feedback=svc.ranker.feedback.summary()["total"]),
         )
 
     return app
