@@ -25,12 +25,18 @@
    обслуживания, предлагаемый runbook и риск-флаги. Точка подключения — хук в
    тикетинг-политике или сервис, слушающий новые инциденты.
 
+3. **Real-time контур**. Для горячего окна инцидента: интенсивность аварий с
+   шагом 10 секунд + EWMA, кластеризация микро-штормов, lagged-PC causal graph
+   и runbook-оркестратор поверх XGBoost. Не заменяет batch-ядро, а работает
+   сбоку; production-вход проектируется через Kafka/Vector → ClickHouse.
+
 ## Документация
 [Читать документацию по API](docs/API.md)\
 [Как датасет превращается в аварии](docs/DATA_MAPPING.md)\
 [Читать документацию по API](docs/API.md)\
 [Методика и контроли](docs/METHOD_BUTTERFLY.md)\
 [Архитектура XGBoost-ранжировщика](docs/RANKER.md)\
+[Real-time контур: EWMA, causal graph, кластеры, runbook](docs/REALTIME.md)\
 [Полный исследовательский EDA с выводами и графиками](docs/EDA_Ricochet.ipynb)\
 [Сценарии онлайн-тестирования API, ответы и замеры скорости](docs/API_TEST_SCENARIOS.md)\
 
@@ -42,6 +48,7 @@ src/ricochet/
   leadlag.py         движок: биннинг, lag-корреляции, фильтры, устойчивость
   verdicts.py        вердикты: дубль / бабочка (общие vs несовпадающие устройства)
   ranking/           XGBoost-ранжировщик, признаки, обратная связь, обучение
+  reallife/          realtime: intensity/EWMA, HDBSCAN, causal graph, runbook
   maintenance.py     окна обслуживания
   ingest/aiops2020.py  адаптер датасета (китайский -> английский -> аварии)
   ingest/synthetic.py генератор синтетики с посаженными паттернами

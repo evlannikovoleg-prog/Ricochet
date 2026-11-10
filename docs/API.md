@@ -2,6 +2,8 @@
 
 База: `http://127.0.0.1:8077`. Все рабочие маршруты — под `/api/v1`.
 Архитектура и ограничения сервиса — в `docs/EDA_Ricochet.ipynb`, разделы 12–13.
+Real-time контур (интенсивность/EWMA, causal graph, кластеры, runbook) —
+в `docs/REALTIME.md`.
 Сценарии онлайн-тестирования и замеры скорости — в `docs/API_TEST_SCENARIOS.md`.
 
 ## /health
@@ -177,6 +179,36 @@ curl.exe http://127.0.0.1:8077/health
 После обучения `POST /api/v1/precheck/incident` пересчитывает вероятности
 текущей моделью на лету. Список `/butterfly/pairs` обновится с новой версией
 модели после следующего `POST /api/v1/butterfly/run`.
+
+## Real-time контур
+
+Все три эндпоинта принимают один `IncidentBundle` (`alarms`, опционально
+`topology_nodes`, `topology_edges`, `maintenance`, `start`, `end`) и общий
+preprocessing: интенсивность с шагом `step_seconds` + EWMA. Подробно —
+`docs/REALTIME.md`.
+
+### POST /api/v1/topology/causal-graph
+
+Строит lagged-PC/Granger-lite DAG по EWMA-сигналам. Query-параметры:
+`step_seconds`, `ewma_half_life_seconds`, `max_lag_seconds`, `min_abs_corr`,
+`min_causal_power`, `max_nodes`, `max_cond_size`, `remove_common_factor`,
+`use_topology`, `topology_strict`. Ответ: `nodes`, `edges` (`causal_power`,
+`lag_seconds`, `corr`, `partial_corr`), `topological_order`, `warnings`.
+
+### POST /api/v1/anomalies/clusters
+
+Кластеризация series по частотным/временным признакам. Query-параметры:
+`method` (`hdbscan` / `dbscan` / `kmeans` / `auto`), `min_cluster_size`,
+`min_samples`, `n_clusters`, `top_k`. Ответ: `clusters`, `noise`,
+`method_used`, признаки рядов, `warnings`.
+
+### POST /api/v1/agent/runbook
+
+Оркестратор: causal graph → XGBoost/эвристический ранжировщик → runbook из
+`RunbookRegistry` → шаги проверки. Возвращает `summary`, `confidence`,
+`root_causes`, `steps`, `evidence`, `similar_incidents`, `warnings`.
+По умолчанию текст локальный; в `RunbookAgent` можно передать LLM-функцию,
+сохранив структурированные evidence.
 
 ## Окна обслуживания
 

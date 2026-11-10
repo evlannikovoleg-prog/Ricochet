@@ -154,7 +154,7 @@ def create_app(cfg: AppConfig | None = None) -> "object":
     from contextlib import asynccontextmanager
 
     from fastapi import FastAPI
-    from . import routes_butterfly, routes_precheck, routes_ranker
+    from . import routes_butterfly, routes_precheck, routes_ranker, routes_reallife
     config = cfg or AppConfig()
 
     @asynccontextmanager
@@ -168,6 +168,7 @@ def create_app(cfg: AppConfig | None = None) -> "object":
     app.include_router(routes_precheck.router, prefix="/api/v1")
     app.include_router(routes_butterfly.router, prefix="/api/v1")
     app.include_router(routes_ranker.router, prefix="/api/v1")
+    app.include_router(routes_reallife.router, prefix="/api/v1")
 
     @app.get("/health")
     async def health():
