@@ -37,6 +37,7 @@
 [Методика и контроли](docs/METHOD_BUTTERFLY.md)\
 [Архитектура XGBoost-ранжировщика](docs/RANKER.md)\
 [Real-time контур: EWMA, causal graph, кластеры, runbook](docs/REALTIME.md)\
+[EDA real-time: тесты и симуляция Kafka/ClickHouse](docs/EDA_Reallife.ipynb)\
 [Полный исследовательский EDA с выводами и графиками](docs/EDA_Ricochet.ipynb)\
 [Сценарии онлайн-тестирования API, ответы и замеры скорости](docs/API_TEST_SCENARIOS.md)\
 
